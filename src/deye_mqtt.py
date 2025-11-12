@@ -16,6 +16,7 @@
 # under the License.
 
 import logging
+import re
 import ssl
 import threading
 
@@ -39,6 +40,7 @@ class DeyeMqttClient:
         self.__mqtt_client = paho.Client(
             client_id=f"deye-inverter-{config.logger.serial_number}", reconnect_on_failure=True, clean_session=True
         )
+        self.__config = config.mqtt
         self.__mqtt_client.enable_logger()
         if config.mqtt.tls.enabled:
             if config.mqtt.tls.insecure:
@@ -56,10 +58,15 @@ class DeyeMqttClient:
                 self.__log.info("Enabled TLS encryption for MQTT Broker connection with certificate verification")
         if config.mqtt.username and config.mqtt.password:
             self.__mqtt_client.username_pw_set(username=config.mqtt.username, password=config.mqtt.password)
-        self.__status_topic = f"{config.mqtt.topic_prefix}/{config.mqtt.availability_topic}"
-        self.__mqtt_client.will_set(self.__status_topic, "offline", retain=True, qos=1)
+
+        self.__status_topics = set()
+        for logger in config.logger_configs:
+            topic = self.build_topic_name(logger.index, config.mqtt.availability_topic)
+            if topic not in self.__status_topics:
+                self.__status_topics.add(topic)
+                self.__mqtt_client.will_set(topic, "offline", retain=True, qos=1)
+
         self.__mqtt_client.on_connect = self.__on_connect
-        self.__config = config.mqtt
         self.__mqtt_timeout = 3  # seconds
         self.__publish_lock = threading.RLock()
         self.__command_handlers = {}
@@ -89,7 +96,8 @@ class DeyeMqttClient:
             return False
 
     def __on_connect(self, client, userdata, flags, rc) -> None:
-        self.__mqtt_client.publish(self.__status_topic, "online", retain=True, qos=1)
+        for topic in self.__status_topics:
+            self.__mqtt_client.publish(topic, "online", retain=True, qos=1)
         self.__log.info(
             "Successfully connected to MQTT Broker located at %s:%d", self.__config.host, self.__config.port
         )
@@ -119,18 +127,10 @@ class DeyeMqttClient:
         finally:
             self.__publish_lock.release()
 
-    def __build_topic_name(self, logger_topic_prefix: str, topic_suffix: str) -> str:
-        if logger_topic_prefix:
-            return f"{self.__config.topic_prefix}/{logger_topic_prefix}/{topic_suffix}"
-        else:
-            return f"{self.__config.topic_prefix}/{topic_suffix}"
-
-    def __map_logger_index_to_topic_prefix(self, logger_index: int):
-        return str(logger_index) if logger_index > 0 else ""
-
     def build_topic_name(self, logger_index: int, topic_suffix: str) -> str:
-        logger_topic_prefix = self.__map_logger_index_to_topic_prefix(logger_index)
-        return self.__build_topic_name(logger_topic_prefix, topic_suffix)
+        pattern = re.compile(r"{{\s*logger_index\s*}}", re.IGNORECASE)
+        prefix = pattern.sub(str(logger_index), self.__config.topic_prefix)
+        return f"{prefix}/{topic_suffix}"
 
     def publish_observation(self, observation: Observation, logger_index: int):
         if observation.sensor.mqtt_topic_enabled and observation.sensor.mqtt_topic_suffix:
@@ -145,10 +145,7 @@ class DeyeMqttClient:
         ParameterizedLogger(self.__log, logger_index).info("Logger is %s", value)
 
     def extract_command_topic_suffix(self, logger_index: int, topic: str) -> str | None:
-        logger_topic_prefix = self.__map_logger_index_to_topic_prefix(logger_index)
-        prefix = f"{self.__config.topic_prefix}/"
-        if logger_topic_prefix:
-            prefix = f"{prefix}{logger_topic_prefix}/"
+        prefix = self.build_topic_name(logger_index, "")
         suffix = "/command"
         if topic.startswith(prefix) and topic.endswith(suffix):
             return topic.replace(prefix, "").replace(suffix, "")

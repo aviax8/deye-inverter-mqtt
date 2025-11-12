@@ -32,7 +32,7 @@ When your inverter turns out to work well with an already exiting metrics group,
 | [Deye SG01LP1](https://deye.com/product/sun-7-6-8k-sg01lp1-eu/)                                                 | tcp, at  | [deye_hybrid](docs/metric_group_deye_hybrid.md), [deye_hybrid_battery](docs/metric_group_deye_hybrid_battery.md), [deye_hybrid_bms](docs/metric_group_deye_hybrid_bms.md), [deye_hybrid_timeofuse](docs/metric_group_deye_hybrid_timeofuse.md), [settings](docs/metric_group_settings.md)                                                                                |
 | [Deye SG02LP1](https://deye.com/product/sun-7-6-8k-sg02lp1-eu-am2/)                                                 | tcp, at  | [deye_sg02lp1](docs/metric_group_deye_sg02lp1.md), [deye_sg02lp1_battery](docs/metric_group_deye_sg02lp1_battery.md), [deye_sg02lp1_bms](docs/metric_group_deye_sg02lp1_bms.md), [deye_sg02lp1_timeofuse](docs/metric_group_deye_sg02lp1_timeofuse.md), [settings](docs/metric_group_settings.md)                                                                                |
 | [Deye SG01HP3](https://deye.com/product/sun-5-6-8-10-12-15-20-25k-sg01hp3-eu-am2/)                              | tcp, at  | [deye_sg01hp3](docs/metric_group_deye_sg01hp3.md), [deye_sg01hp3_battery](docs/metric_group_deye_sg01hp3_battery.md), [deye_sg01hp3_bms](docs/metric_group_deye_sg01hp3_bms.md), [deye_sg01hp3_ups](docs/metric_group_deye_sg01hp3_ups.md), [deye_sg01hp3_generator](docs/metric_group_deye_sg01hp3_generator.md), [settings](docs/metric_group_settings.md)                                                                                    |
-| [Deye SG03LP1](https://deye.com/product/sun-3-6-5-6k-sg03lp1-eu/)                              | tcp, at  | [deye_sg03lp1](docs/metric_group_deye_sg03lp1.md), [deye_hybrid_battery](docs/metric_group_deye_hybrid_battery.md), [deye_hybrid_bms](docs/metric_group_deye_hybrid_bms.md), [deye_hybrid_timeofuse](docs/metric_group_deye_hybrid_timeofuse.md), [settings](docs/metric_group_settings.md)                               
+| [Deye SG03LP1](https://deye.com/product/sun-3-6-5-6k-sg03lp1-eu/)                              | tcp, at  | [deye_sg03lp1](docs/metric_group_deye_sg03lp1.md), [deye_hybrid_battery](docs/metric_group_deye_hybrid_battery.md), [deye_hybrid_bms](docs/metric_group_deye_hybrid_bms.md), [deye_hybrid_timeofuse](docs/metric_group_deye_hybrid_timeofuse.md), [settings](docs/metric_group_settings.md)
 
 
 | Meter model                                                         | Metric groups                                     |
@@ -51,11 +51,11 @@ The communication with the logger can be performed using one of three different 
 * Proprietary Deye Modbus/TCP protocol - used by inverters produced until 2024 (configuration code is `tcp`)
 * Proprietary Deye Modbus/AT protocol - used by inverters produced until 2024 (configuration code is `at`)
 * Standard Modbus/TCP protocol - used by some? inverters produced starting from 2024 onwards. (configuration code is `mbtcp`)
-  
+
 This project has been started with proprietary Deye Modbus/TCP protocol support and it's still the default one.
 However, logger firmware versions 2.x does not seem to expose Modbus/TCP interface anymore, hence proprietary Deye Modbus/AT protocol support has been implemented. Use `DEYE_LOGGER_PROTOCOL` environment variable to select
 the communication protocol.
-Please note, that Modbus/TCP uses tcp/ip, while Modbus/AT uses udp/ip communication. 
+Please note, that Modbus/TCP uses tcp/ip, while Modbus/AT uses udp/ip communication.
 
 1. Copy `config.env.example` as `config.env`
 2. Fill in values in `config.env`, see [Configuration](#configuration) for more details
@@ -88,7 +88,7 @@ Please note, that Modbus/TCP uses tcp/ip, while Modbus/AT uses udp/ip communicat
     ```
     docker compose -f <path-to-docker-compose.yaml> up -d
     ```
-    * replace `<path-to-docker-compose.yaml>` with path to your `docker-compose.yaml` 
+    * replace `<path-to-docker-compose.yaml>` with path to your `docker-compose.yaml`
 3. Stop and remove the container
     ```
     docker compose -f <path-to-docker-compose.yaml> down -v
@@ -99,7 +99,7 @@ Please note, that Modbus/TCP uses tcp/ip, while Modbus/AT uses udp/ip communicat
    1. `ca.crt`
    2. `client.crt`
    3. `client.key`
-   
+
    Check configuration section if you want to use alternative file names.
 2. Mount certificates folder in a docker container by adding `--volume` option to the command as follows:
    ```
@@ -128,7 +128,7 @@ sudo apt install -t buster-backports libseccomp2
 
 #### Network connectivity issues
 
-These problems typically manifest with timeout errors. 
+These problems typically manifest with timeout errors.
 
 The first thing to check is, if given network address is reachable from within the docker container.
 In order to do this run the following commands:
@@ -141,7 +141,7 @@ In order to do this run the following commands:
    1. `Connected to <ip>` - connection works fine. The next step is to enable DEBUG logs in `config.env` and open a github issue
    2. `telnet: can't connect to remote host (<ip>): Connection refused` - The next step is: fix your network configuration
 
-#### Random read timeouts 
+#### Random read timeouts
 
 For best performance, multiple Modbus registers are read at once, in so called register ranges. It's been reported [here](https://github.com/kbialek/deye-inverter-mqtt/issues/141) that Deye-SUN-5K-SG03LP1 reading times out when more than 16 registers is requested at once. To mitigate this problem you may try to set `DEYE_LOGGER_MAX_REG_RANGE_LENGTH` to lower number.
 
@@ -241,13 +241,17 @@ Replace `{N}` with logger index. All loggers in the range of 1 to `DEYE_LOGGER_C
 
 All other configuration options, in particular the metric groups, are shared by all configured loggers. For example, if you set `DEYE_FEATURE_SET_TIME=true`, it will activate set-time feature for all configured loggers.
 
-Each logger gets its own MQTT topic prefix `{MQTT_TOPIC_PREFIX}/{N}`
+Each logger can get its own MQTT topic prefix using a `{{logger_index}}` placeholder, e.g.
+```
+MQTT_TOPIC_PREFIX=Deye{{logger_index}}
+MQTT_TOPIC_PREFIX=Deye/{{logger_index}}
+```
 
 Additionally, you can enable multi-inverter data aggregation. Set `DEYE_FEATURE_MULTI_INVERTER_DATA_AGGREGATOR=true` to compute and report `Aggregated daily energy` and `Aggregated AC active power` for the entire fleet. See [aggregated metrics](docs/metric_group_aggregated.md)
 
 ### Automatically set logger/inverter time
 Monitors current logger status and sets the time at the logger/inverter once the connection to it can be established.
-This is useful in a setup where the inverter has no access to the public internet, or is cut off from the Solarman cloud services. 
+This is useful in a setup where the inverter has no access to the public internet, or is cut off from the Solarman cloud services.
 This feature is disabled by default and must be activated by setting `DEYE_FEATURE_SET_TIME` in the config file.
 
 ### Reading inverter settings
@@ -275,7 +279,7 @@ It is possible to modify selected inverter settings over MQTT.
 
 <sup>(2)</sup> max inverter power in Watts e.g. 8000, 10000 or 12000
 
-<sup>(3)</sup> encodes the charging source, with Grid (bit 0) and Generator (bit 1). 
+<sup>(3)</sup> encodes the charging source, with Grid (bit 0) and Generator (bit 1).
 |  Gen  | Grid | Binary | Value |
 | :---: | :--: | :----: | :---: |
 |   0   | 0    |  `00`  | **0** |

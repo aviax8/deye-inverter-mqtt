@@ -259,10 +259,11 @@ class DeyeConfig:
     def from_env():
         try:
             logger_count = DeyeEnv.integer("DEYE_LOGGER_COUNT", 0)
+            logger_first_index = DeyeEnv.integer("DEYE_LOGGER_FIRST_INDEX", 1)
             if logger_count == 0:
                 logger_configs = [DeyeLoggerConfig.from_env()]
             else:
-                logger_configs = [DeyeLoggerConfig.from_env_indexed(i) for i in range(1, logger_count + 1)]
+                logger_configs = [DeyeLoggerConfig.from_env_indexed(i) for i in range(logger_first_index, logger_count + logger_first_index)]
             return DeyeConfig(
                 logger_configs,
                 DeyeMqttConfig.from_env(),
