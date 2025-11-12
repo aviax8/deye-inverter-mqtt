@@ -133,7 +133,7 @@ class DeyeMqttClient:
         return self.__build_topic_name(logger_topic_prefix, topic_suffix)
 
     def publish_observation(self, observation: Observation, logger_index: int):
-        if observation.sensor.mqtt_topic_suffix:
+        if observation.sensor.mqtt_topic_enabled and observation.sensor.mqtt_topic_suffix:
             mqtt_topic = self.build_topic_name(logger_index, observation.sensor.mqtt_topic_suffix)
             value = observation.value_as_str()
             self.publish(mqtt_topic, value)

@@ -20,6 +20,7 @@ from deye_sensor import (
     ComputedPowerSensor,
     DoubleRegisterSensor,
     ComputedSumSensor,
+    GroupSensor,
     SensorRegisterRange,
 )
 
@@ -248,7 +249,8 @@ ac_reactive_power_sensor = SingleRegisterSensor(
 )
 production_total_sensor = DoubleRegisterSensor(
     "Production Total", 0x3F, 0.1, mqtt_topic_suffix="total_energy", unit="kWh", groups=["string", "micro"]
-).use_as_readiness_check()
+)
+#).use_as_readiness_check()
 
 # Temperature sensors
 string_radiator_temp_sensor = SingleRegisterSensor(
@@ -260,6 +262,16 @@ micro_radiator_temp_sensor = SingleRegisterSensor(
 igbt_temp_sensor = SingleRegisterSensor(
     "IGBT temperature", 0x5B, 0.1, offset=-100, mqtt_topic_suffix="igbt_temp", unit="°C", groups=["string"]
 )
+
+
+micro_group_sensor = GroupSensor(
+    "Micro Data", mqtt_topic_suffix="data/state", groups=["micro"]
+).enable_mqtt_topic()
+
+config_group_sensor = GroupSensor(
+    "Micro Data", mqtt_topic_suffix="config/state", groups=["settings"]
+).enable_mqtt_topic()
+
 
 sensor_list = (
     [
@@ -316,6 +328,8 @@ sensor_list = (
         string_radiator_temp_sensor,
         micro_radiator_temp_sensor,
         igbt_temp_sensor,
+        micro_group_sensor,
+        config_group_sensor,
     ]
     + deye_sg04lp3_sensors
     + deye_sg04lp3_computed_sensors
@@ -327,6 +341,7 @@ sensor_list = (
     + deye_sg01hp3_sensors
     + aggregated_sensor_list
 )
+
 
 sensor_register_ranges = (
     [

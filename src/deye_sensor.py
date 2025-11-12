@@ -40,6 +40,10 @@ class Sensor:
         pass
 
     @abstractproperty
+    def mqtt_topic_enabled(self) -> bool:
+        pass
+
+    @abstractproperty
     def unit(self) -> str:
         pass
 
@@ -120,6 +124,10 @@ class DailyResetSensor(Sensor):
         return self.__delegate.mqtt_topic_suffix
 
     @property
+    def mqtt_topic_enabled(self) -> bool:
+        return self.__delegate.mqtt_topic_enabled
+
+    @property
     def unit(self) -> str:
         return self.__delegate.unit
 
@@ -179,6 +187,7 @@ class AbstractSensor(Sensor):
         assert len(groups) > 0, f"Sensor {name} must belong to at least one group"
         self.__groups = groups
         self.__is_readiness_check = False
+        self.__mqtt_topic_enabled = False
 
     @property
     def name(self) -> str:
@@ -187,6 +196,10 @@ class AbstractSensor(Sensor):
     @property
     def mqtt_topic_suffix(self) -> str:
         return self.__mqtt_topic_suffix
+
+    @property
+    def mqtt_topic_enabled(self) -> bool:
+        return self.__mqtt_topic_enabled
 
     @property
     def unit(self) -> str:
@@ -214,6 +227,10 @@ class AbstractSensor(Sensor):
 
     def use_as_readiness_check(self) -> Sensor:
         self.__is_readiness_check = True
+        return self
+
+    def enable_mqtt_topic(self) -> Sensor:
+        self.__mqtt_topic_enabled = True
         return self
 
 
@@ -427,6 +444,35 @@ class ComputedSumSensor(AbstractSensor):
     def get_registers(self) -> list[int]:
         return []
 
+class GroupSensor(AbstractSensor):
+    """
+    Represents a group of sensors to be published in one message.
+    """
+
+    def __init__(self, name: str, mqtt_topic_suffix="", groups=[]):
+        super().__init__(name, mqtt_topic_suffix, "", "{}", groups)
+        self.__sensors: list[Sensor] = []
+
+    def set_sensors(self, group_sensors: list[Sensor]) -> None:
+        self.__sensors = group_sensors
+
+    def has_sensor(self, sensor: Sensor) -> bool:
+        return sensor in self.__sensors
+
+    def set_matching_sensors(self, sensor_list: list[Sensor]) -> None:
+        """
+        Helper sets sensors matching the groups
+        """
+        my_groups = set(self.groups)
+        group_sensors = [
+            s for s in sensor_list
+            if s.in_any_group(my_groups) and not isinstance(s, GroupSensor)
+        ]
+        self.set_sensors(group_sensors)
+
+    def read_value(self, registers: dict[int, bytearray]):
+        # the value for Observation is evaluated in DeyeGroupSensorEvaluator
+        return 0
 
 class AggregatedValueSensor(AbstractSensor):
     """
@@ -444,7 +490,6 @@ class AggregatedValueSensor(AbstractSensor):
 
     def get_registers(self) -> list[int]:
         return []
-
 
 class EnumValueSensor(AbstractSensor):
     """

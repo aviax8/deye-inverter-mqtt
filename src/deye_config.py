@@ -287,6 +287,8 @@ class DeyeConfig:
     @staticmethod
     def __read_active_processors() -> [str]:
         active_processors = []
+        if DeyeEnv.boolean("DEYE_FEATURE_GROUP_SENSORS", True):
+            active_processors.append("group_sensor_evaluator")
         if DeyeEnv.boolean("DEYE_FEATURE_MQTT_PUBLISHER", True):
             active_processors.append("mqtt_publisher")
         if DeyeEnv.boolean("DEYE_FEATURE_SET_TIME", False):
